@@ -38,7 +38,6 @@ dist/
 *.db
 *.sqlite
 *.sqlite3
-prisma/migrations/**/migration.sql
 
 # Logs
 logs/
@@ -51,6 +50,7 @@ yarn-error.log*
 coverage/
 .nyc_output/
 .pytest_cache/
+test-results/
 
 # Docker
 *.env.docker
@@ -65,7 +65,12 @@ scraper/data/metadata/*
 
 # AI Models
 ai-engine/models/*
-!ai-engine/models/.gitkeep
+ai-engine/data/*
+!ai-engine/models/base/.gitkeep
+!ai-engine/models/ingenieria/.gitkeep
+!ai-engine/models/ciencias_sociales/.gitkeep
+!ai-engine/models/exactas_naturales/.gitkeep
+!ai-engine/models/agrarias/.gitkeep
 *.gguf
 *.safetensors
 *.bin
@@ -73,11 +78,14 @@ ai-engine/models/*
 # Uploads
 backend-api/uploads/*
 !backend-api/uploads/.gitkeep
+webapp/public/uploads/*
 
 # Temporal files
 *.tmp
 *.temp
 .cache/
+*.swp
+*~
 
 # OS
 Thumbs.db
@@ -88,3 +96,9 @@ chroma_data/
 
 # Ollama
 .ollama/
+
+# Agent output files
+/tmp/
+
+# Monitoring
+monitoring/data/
