@@ -89,7 +89,7 @@ model Generation {
   id                String      @id @default(cuid())
   userId            String
   user              User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+
   // Input parameters
   prompt            String      @db.Text
   discipline        Discipline
@@ -98,28 +98,30 @@ model Generation {
   temperature       Float       @default(0.7)
   fromDocument      Boolean     @default(false)
   documentPath      String?     // If generated from uploaded document
-  
+
   // Generated output
   rawText           String      @db.Text  // Before humanization
   humanizedText     String      @db.Text  // After humanization
-  
+
   // Metrics (stored as JSON for flexibility)
   metrics           Json        // { burstiness, humanizationScore, aiWordsCount, etc. }
-  
+
   // Performance
   duration          Int         // Generation time in milliseconds
   tokensGenerated   Int?
-  
+
   // Status
   status            GenerationStatus  @default(COMPLETED)
   errorMessage      String?     @db.Text
-  
+
   // Metadata
   createdAt         DateTime    @default(now())
-  
+
   // Relations
   feedbacks         Feedback[]
-  
+  verifications     VerificationResult[]
+  plagiarismReports PlagiarismReport[]
+
   @@index([userId, createdAt(sort: Desc)])
   @@index([discipline])
   @@index([status])
@@ -215,6 +217,103 @@ model Feedback {
   @@index([helpful])
   @@index([markedForRetraining])
   @@map("feedbacks")
+}
+
+// ==========================================
+// AI DETECTION VERIFICATION
+// ==========================================
+
+model VerificationResult {
+  id              String    @id @default(cuid())
+  userId          String?
+  generationId    String?
+  generation      Generation? @relation(fields: [generationId], references: [id], onDelete: Cascade)
+  text            String    @db.Text
+
+  // Detection results from individual detectors
+  gptZeroScore    Float?    // 0-100, higher = more AI
+  zeroGptScore    Float?
+  copyleaksScore  Float?
+  winstonScore    Float?
+
+  // Aggregated scores
+  averageScore    Float?    // Average AI detection score
+  weightedScore   Float?    // Confidence-weighted score
+  consensusScore  Float?    // Agreement between detectors
+
+  // Safety assessment
+  safetyScore     Float     // 0-100, higher = safer
+  riskLevel       RiskLevel
+  confidence      Float     @default(0.5)  // 0-1
+
+  // Recommendations (stored as JSON array)
+  recommendations Json      // Array of recommendation strings
+
+  // Detector metadata
+  detectorsUsed   Int       @default(0)
+  successfulDetections Int  @default(0)
+
+  createdAt       DateTime  @default(now())
+
+  @@index([generationId])
+  @@index([userId])
+  @@index([riskLevel])
+  @@index([createdAt(sort: Desc)])
+  @@map("verification_results")
+}
+
+enum RiskLevel {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+// ==========================================
+// PLAGIARISM DETECTION
+// ==========================================
+
+model PlagiarismReport {
+  id                  String          @id @default(cuid())
+  userId              String?
+  generationId        String?
+  text                String          @db.Text
+
+  // Overall similarity analysis
+  overallSimilarity   Float           // 0-1, percentage of text that matches
+  riskLevel           SimilarityRisk
+  matchedChunks       Int             @default(0)
+  totalChunks         Int             @default(0)
+
+  // Sources (stored as JSON array)
+  // [{ source_id, title, author, year, similarity, matched_passages: [...] }]
+  sources             Json
+
+  // Matched passages detail (stored as JSON array)
+  // [{ chunk_text, matched_text, similarity, source_id, chunk_id }]
+  matchedPassages     Json
+
+  // Analysis metadata
+  methodsUsed         String[]        // ["vector", "tfidf", "exact"]
+  corpusSize          Int?            // Number of documents checked
+
+  // Recommendations
+  recommendations     Json            // Array of recommendation strings
+  requiresRewrite     Boolean         @default(false)
+
+  createdAt           DateTime        @default(now())
+
+  @@index([userId])
+  @@index([generationId])
+  @@index([riskLevel])
+  @@index([createdAt(sort: Desc)])
+  @@map("plagiarism_reports")
+}
+
+enum SimilarityRisk {
+  LOW         // < 15% similarity
+  MODERATE    // 15-30% similarity
+  HIGH        // 30-50% similarity
+  CRITICAL    // > 50% similarity
 }
 
 // ==========================================
@@ -385,13 +484,46 @@ model RefreshToken {
   id          String    @id @default(cuid())
   token       String    @unique
   userId      String
-  
+
   expiresAt   DateTime
   isRevoked   Boolean   @default(false)
-  
+
   createdAt   DateTime  @default(now())
-  
+
   @@index([userId])
   @@index([token])
   @@map("refresh_tokens")
+}
+
+// ==========================================
+// PLAGIARISM DETECTION
+// ==========================================
+
+model PlagiarismReport {
+  id                  String          @id @default(cuid())
+  generationId        String?
+  generation          Generation?     @relation(fields: [generationId], references: [id], onDelete: SetNull)
+
+  text                String          @db.Text
+
+  // Similarity metrics
+  overallSimilarity   Float           // 0-1 score
+  riskLevel           SimilarityRisk
+
+  // Matched sources and passages (stored as JSON)
+  sources             Json            // Array of matching sources with metadata
+  matchedPassages     Json            // Array of matched text segments
+
+  createdAt           DateTime        @default(now())
+
+  @@index([generationId])
+  @@index([riskLevel])
+  @@index([createdAt(sort: Desc)])
+  @@map("plagiarism_reports")
+}
+
+enum SimilarityRisk {
+  SAFE      // < 15%
+  MODERATE  // 15-30%
+  HIGH      // > 30%
 }

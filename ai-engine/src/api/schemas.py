@@ -239,3 +239,114 @@ class FeedbackResponse(BaseModel):
     received: bool = Field(..., description="Whether feedback was received")
     will_retrain: bool = Field(..., description="Whether this will trigger retraining")
     message: str = Field(..., description="Response message")
+
+
+class PlagiarismCheckRequest(BaseModel):
+    """Request model for plagiarism check"""
+    text: str = Field(..., min_length=100, description="Text to check for plagiarism")
+    generation_id: Optional[str] = Field(None, description="Optional generation ID")
+    top_sources: int = Field(default=5, ge=1, le=10, description="Number of top sources to return")
+    similarity_threshold: float = Field(default=0.25, ge=0.0, le=1.0, description="Minimum similarity threshold")
+    include_passages: bool = Field(default=True, description="Include highlighted passages")
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "text": "Las energías renovables representan una alternativa...",
+                "top_sources": 5,
+                "similarity_threshold": 0.25,
+                "include_passages": True
+            }
+        }
+
+
+class SourceMatch(BaseModel):
+    """Individual source match"""
+    source_id: str = Field(..., description="Source document ID")
+    title: str = Field(..., description="Source title")
+    authors: List[str] = Field(default_factory=list, description="Source authors")
+    year: Optional[int] = Field(None, description="Publication year")
+    institution: Optional[str] = Field(None, description="Institution")
+    similarity_percentage: float = Field(..., description="Similarity percentage")
+    match_count: int = Field(..., description="Number of matches")
+    matched_passages: List[Dict[str, Any]] = Field(default_factory=list, description="Matched text passages")
+
+
+class PlagiarismCheckResponse(BaseModel):
+    """Response model for plagiarism check"""
+    report_id: str = Field(..., description="Report ID")
+    overall_similarity: float = Field(..., description="Overall similarity score (0-1)")
+    similarity_percentage: float = Field(..., description="Similarity percentage")
+    risk_level: str = Field(..., description="Risk level (SAFE/MODERATE/HIGH)")
+    summary: str = Field(..., description="Report summary")
+    top_sources: List[Dict[str, Any]] = Field(..., description="Top matching sources")
+    statistics: Dict[str, Any] = Field(..., description="Detailed statistics")
+    exact_matches_count: int = Field(..., description="Number of exact matches")
+    highlighted_passages: List[Dict[str, Any]] = Field(default_factory=list, description="Highlighted passages")
+    processing_time_ms: int = Field(..., description="Processing time in milliseconds")
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "report_id": "report_20240119_123456",
+                "overall_similarity": 0.23,
+                "similarity_percentage": 23.0,
+                "risk_level": "MODERATE",
+                "summary": "The text shows moderate similarity...",
+                "top_sources": [],
+                "statistics": {},
+                "exact_matches_count": 2,
+                "highlighted_passages": [],
+                "processing_time_ms": 1234
+            }
+        }
+
+
+class FindSourcesRequest(BaseModel):
+    """Request model for finding similar sources"""
+    text: str = Field(..., min_length=50, description="Query text")
+    top_k: int = Field(default=5, ge=1, le=20, description="Number of sources to return")
+    discipline: Optional[DisciplineEnum] = Field(None, description="Filter by discipline")
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "text": "energías renovables en República Dominicana",
+                "top_k": 5,
+                "discipline": "INGENIERIA"
+            }
+        }
+
+
+class SourceDetails(BaseModel):
+    """Detailed source information"""
+    source_id: str = Field(..., description="Source document ID")
+    title: str = Field(..., description="Source title")
+    authors: List[str] = Field(default_factory=list, description="Authors")
+    year: Optional[int] = Field(None, description="Publication year")
+    institution: Optional[str] = Field(None, description="Institution")
+    discipline: Optional[str] = Field(None, description="Discipline")
+    similarity_percentage: float = Field(..., description="Similarity percentage")
+    citation: str = Field(..., description="Formatted citation")
+    matched_text: Optional[str] = Field(None, description="Matched text excerpt")
+
+
+class FindSourcesResponse(BaseModel):
+    """Response model for source finding"""
+    sources: List[SourceDetails] = Field(..., description="Found sources")
+    total_found: int = Field(..., description="Total sources found")
+    query_text: str = Field(..., description="Original query")
+
+
+class ReportExportRequest(BaseModel):
+    """Request model for report export"""
+    report_data: Dict[str, Any] = Field(..., description="Report data to export")
+    format: str = Field(default="json", description="Export format (json/text/html)")
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "report_data": {},
+                "format": "json"
+            }
+        }

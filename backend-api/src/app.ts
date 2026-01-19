@@ -13,6 +13,7 @@ import usersRoutes from './routes/users.routes';
 import generationRoutes from './routes/generation.routes';
 import corpusRoutes from './routes/corpus.routes';
 import adminRoutes from './routes/admin.routes';
+import verificationRoutes from './routes/verification.routes';
 
 /**
  * Create and configure Express application
@@ -104,6 +105,9 @@ const createApp = (): Application => {
   // Admin routes
   app.use('/api/admin', adminRoutes);
 
+  // Verification routes
+  app.use('/api/verify', verificationRoutes);
+
   // ==========================================
   // API INFO ENDPOINT
   // ==========================================
@@ -120,6 +124,7 @@ const createApp = (): Application => {
           generate: '/api/generate',
           corpus: '/api/corpus',
           admin: '/api/admin',
+          verify: '/api/verify',
         },
         documentation: '/api-docs',
       },

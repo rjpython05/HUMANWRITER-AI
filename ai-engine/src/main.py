@@ -6,7 +6,15 @@ from loguru import logger
 import sys
 
 from .config.settings import settings
-from .api.routes import generation, corpus, models, health
+from .api.routes import health, models
+from .api.routes import verification
+
+# Try to import generation and corpus if they exist
+try:
+    from .api.routes import generation, corpus
+    HAS_GENERATION = True
+except ImportError:
+    HAS_GENERATION = False
 
 # Configure logger
 logger.remove()
@@ -36,9 +44,13 @@ app.add_middleware(
 
 # Include routers
 app.include_router(health.router, prefix="/health", tags=["Health"])
-app.include_router(generation.router, prefix="/generate", tags=["Generation"])
-app.include_router(corpus.router, prefix="/corpus", tags=["Corpus"])
 app.include_router(models.router, prefix="/models", tags=["Models"])
+app.include_router(verification.router, prefix="/verification", tags=["Verification"])
+
+# Include generation and corpus routers if available
+if HAS_GENERATION:
+    app.include_router(generation.router, prefix="/generate", tags=["Generation"])
+    app.include_router(corpus.router, prefix="/corpus", tags=["Corpus"])
 
 @app.on_event("startup")
 async def startup_event():
