@@ -1,0 +1,397 @@
+// HumanWriter AI - Prisma Schema
+// Database: PostgreSQL 15 with pgvector extension
+
+generator client {
+  provider = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  extensions = [pgvector(map: "vector")]
+}
+
+// ==========================================
+// USER MANAGEMENT
+// ==========================================
+
+model User {
+  id            String      @id @default(cuid())
+  email         String      @unique
+  password      String      // Hashed with bcrypt
+  name          String?
+  role          Role        @default(USER)
+  plan          Plan        @default(FREE)
+  isActive      Boolean     @default(true)
+  emailVerified DateTime?
+  
+  // Usage tracking
+  generationsCount     Int       @default(0)
+  generationsThisMonth Int       @default(0)
+  lastGenerationAt     DateTime?
+  
+  // Metadata
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  lastLoginAt   DateTime?
+  
+  // Relations
+  generations   Generation[]
+  feedbacks     Feedback[]
+  apiKeys       ApiKey[]
+  
+  @@index([email])
+  @@index([role])
+  @@index([plan])
+  @@map("users")
+}
+
+enum Role {
+  GUEST
+  USER
+  ADMIN
+}
+
+enum Plan {
+  FREE
+  PRO
+  ENTERPRISE
+}
+
+// ==========================================
+// API KEYS (for programmatic access)
+// ==========================================
+
+model ApiKey {
+  id          String    @id @default(cuid())
+  key         String    @unique  // Hashed API key
+  name        String    // Friendly name
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  lastUsedAt  DateTime?
+  expiresAt   DateTime?
+  isActive    Boolean   @default(true)
+  
+  createdAt   DateTime  @default(now())
+  
+  @@index([userId])
+  @@index([key])
+  @@map("api_keys")
+}
+
+// ==========================================
+// TEXT GENERATION
+// ==========================================
+
+model Generation {
+  id                String      @id @default(cuid())
+  userId            String
+  user              User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Input parameters
+  prompt            String      @db.Text
+  discipline        Discipline
+  modelUsed         String      // e.g., "humanwriter-ingenieria:8b"
+  maxWords          Int?
+  temperature       Float       @default(0.7)
+  fromDocument      Boolean     @default(false)
+  documentPath      String?     // If generated from uploaded document
+  
+  // Generated output
+  rawText           String      @db.Text  // Before humanization
+  humanizedText     String      @db.Text  // After humanization
+  
+  // Metrics (stored as JSON for flexibility)
+  metrics           Json        // { burstiness, humanizationScore, aiWordsCount, etc. }
+  
+  // Performance
+  duration          Int         // Generation time in milliseconds
+  tokensGenerated   Int?
+  
+  // Status
+  status            GenerationStatus  @default(COMPLETED)
+  errorMessage      String?     @db.Text
+  
+  // Metadata
+  createdAt         DateTime    @default(now())
+  
+  // Relations
+  feedbacks         Feedback[]
+  
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([discipline])
+  @@index([status])
+  @@index([createdAt(sort: Desc)])
+  @@map("generations")
+}
+
+enum Discipline {
+  INGENIERIA
+  CIENCIAS_SOCIALES
+  EXACTAS_NATURALES
+  AGRARIAS
+}
+
+enum GenerationStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+// ==========================================
+// ACADEMIC CORPUS
+// ==========================================
+
+model Document {
+  id                String      @id @default(cuid())
+  
+  // Metadata
+  title             String
+  authors           String[]    // Array of author names
+  year              Int
+  institution       String
+  source            String      @db.Text  // Original URL
+  discipline        Discipline
+  subdiscipline     String
+  language          String      // "es" or "en"
+  keywords          String[]    // Keywords for classification
+  
+  // Content
+  wordCount         Int
+  filePath          String      // Path to original file (PDF/DOCX)
+  processedPath     String      // Path to processed text file
+  
+  // Vectorization
+  embeddingId       String?     @unique  // Reference to ChromaDB
+  vectorized        Boolean     @default(false)
+  
+  // Quality control
+  validated         Boolean     @default(false)
+  validationScore   Float?      // 0-100
+  qualityIssues     String[]    // Array of issue descriptions
+  
+  // Metadata
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+  addedBy           String?     // User ID who uploaded (if user-contributed)
+  
+  @@index([discipline])
+  @@index([year])
+  @@index([institution])
+  @@index([validated])
+  @@index([vectorized])
+  @@index([createdAt(sort: Desc)])
+  @@map("documents")
+}
+
+// ==========================================
+// FEEDBACK SYSTEM
+// ==========================================
+
+model Feedback {
+  id                String      @id @default(cuid())
+  userId            String
+  user              User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  generationId      String
+  generation        Generation  @relation(fields: [generationId], references: [id], onDelete: Cascade)
+  
+  // Feedback data
+  rating            Int         // 1-5 stars
+  helpful           Boolean     // Was generation helpful?
+  issues            String[]    // Array of issue types: "not_academic", "too_formal", etc.
+  comment           String?     @db.Text
+  
+  // Active learning
+  markedForRetraining Boolean   @default(false)
+  
+  createdAt         DateTime    @default(now())
+  
+  @@index([generationId])
+  @@index([userId])
+  @@index([rating])
+  @@index([helpful])
+  @@index([markedForRetraining])
+  @@map("feedbacks")
+}
+
+// ==========================================
+// SYSTEM METRICS & MONITORING
+// ==========================================
+
+model SystemMetric {
+  id                String    @id @default(cuid())
+  timestamp         DateTime  @default(now())
+  
+  // System resources
+  cpuUsage          Float     // Percentage
+  ramUsage          Float     // Percentage
+  diskUsage         Float     // Percentage
+  
+  // Application metrics
+  apiCalls          Int       // Total API calls in period
+  errors            Int       // Total errors in period
+  avgResponseTime   Float     // Average response time in ms
+  activeUsers       Int       // Active users in period
+  
+  // AI Engine metrics
+  generationsCount  Int       // Generations in period
+  avgGenerationTime Float     // Average generation time in ms
+  ollamaUptime      Float     // Ollama uptime percentage
+  
+  // Database metrics
+  dbConnections     Int       // Active DB connections
+  dbQueryTime       Float     // Average query time in ms
+  
+  @@index([timestamp(sort: Desc)])
+  @@map("system_metrics")
+}
+
+// ==========================================
+// FINE-TUNING JOBS
+// ==========================================
+
+model FineTuningJob {
+  id                String          @id @default(cuid())
+  
+  // Job info
+  status            FineTuningStatus @default(PENDING)
+  modelName         String          // e.g., "humanwriter-ingenieria-v2"
+  basedOn           String          // Base model name
+  discipline        Discipline?     // If specialized model
+  
+  // Dataset info
+  documentCount     Int             // Number of documents used
+  datasetPath       String          // Path to prepared dataset
+  datasetSize       Int             // Size in MB
+  
+  // Training config
+  config            Json            // Training hyperparameters
+  
+  // Progress
+  progress          Int             @default(0)  // 0-100%
+  currentEpoch      Int?
+  totalEpochs       Int?
+  
+  // Results
+  completedAt       DateTime?
+  modelPath         String?         // Path to trained model
+  metrics           Json?           // Training metrics
+  
+  // Error handling
+  errorMessage      String?         @db.Text
+  retryCount        Int             @default(0)
+  
+  // Metadata
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+  triggeredBy       String?         // "auto" or user ID
+  
+  @@index([status])
+  @@index([discipline])
+  @@index([createdAt(sort: Desc)])
+  @@map("fine_tuning_jobs")
+}
+
+enum FineTuningStatus {
+  PENDING
+  PREPARING
+  TRAINING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+// ==========================================
+// ACTIVE LEARNING & KNOWLEDGE GAPS
+// ==========================================
+
+model KnowledgeGap {
+  id                String    @id @default(cuid())
+  
+  // Gap identification
+  topic             String
+  keywords          String[]
+  discipline        Discipline
+  
+  // Evidence
+  lowScoreCount     Int       // Number of low-score generations
+  failedPrompts     String[]  @db.Text  // Prompts that resulted in poor quality
+  
+  // Recommendations
+  recommendedDocs   String    @db.Text  // Recommended document types to scrape
+  priority          Int       @default(0)  // 0-10, higher = more urgent
+  
+  // Status
+  status            GapStatus @default(IDENTIFIED)
+  resolvedAt        DateTime?
+  addedDocuments    Int       @default(0)  // Count of docs added to address gap
+  
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  
+  @@index([discipline])
+  @@index([priority(sort: Desc)])
+  @@index([status])
+  @@map("knowledge_gaps")
+}
+
+enum GapStatus {
+  IDENTIFIED
+  IN_PROGRESS
+  RESOLVED
+  DISMISSED
+}
+
+// ==========================================
+// AUDIT LOGS
+// ==========================================
+
+model AuditLog {
+  id          String      @id @default(cuid())
+  
+  // Actor
+  userId      String?
+  userEmail   String?
+  ipAddress   String?
+  userAgent   String?     @db.Text
+  
+  // Action
+  action      String      // e.g., "user.login", "generation.create", "corpus.delete"
+  resource    String?     // Resource type: "user", "generation", "document"
+  resourceId  String?     // ID of the resource
+  
+  // Details
+  details     Json?       // Additional context
+  success     Boolean     @default(true)
+  errorMessage String?    @db.Text
+  
+  // Metadata
+  timestamp   DateTime    @default(now())
+  
+  @@index([userId])
+  @@index([action])
+  @@index([timestamp(sort: Desc)])
+  @@map("audit_logs")
+}
+
+// ==========================================
+// REFRESH TOKENS (for JWT auth)
+// ==========================================
+
+model RefreshToken {
+  id          String    @id @default(cuid())
+  token       String    @unique
+  userId      String
+  
+  expiresAt   DateTime
+  isRevoked   Boolean   @default(false)
+  
+  createdAt   DateTime  @default(now())
+  
+  @@index([userId])
+  @@index([token])
+  @@map("refresh_tokens")
+}
