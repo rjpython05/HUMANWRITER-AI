@@ -1,7 +1,7 @@
 version: '3.8'
 
 services:
-  # PostgreSQL Database with pgvector extension
+  # PostgreSQL Database with pgvector
   postgres:
     image: pgvector/pgvector:pg15
     container_name: humanwriter-postgres
@@ -10,7 +10,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-dev_password}
       POSTGRES_DB: ${POSTGRES_DB:-humanwriter_db}
     ports:
-      - "${POSTGRES_PORT:-5432}:5432"
+      - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
@@ -21,14 +21,13 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-    restart: unless-stopped
 
-  # Redis for caching and queues
+  # Redis
   redis:
     image: redis:7-alpine
     container_name: humanwriter-redis
     ports:
-      - "${REDIS_PORT:-6379}:6379"
+      - "6379:6379"
     volumes:
       - redis_data:/data
     networks:
@@ -38,15 +37,14 @@ services:
       interval: 10s
       timeout: 3s
       retries: 5
-    restart: unless-stopped
     command: redis-server --appendonly yes
 
-  # ChromaDB Vector Database
+  # ChromaDB
   chromadb:
     image: chromadb/chroma:latest
     container_name: humanwriter-chromadb
     ports:
-      - "${CHROMADB_PORT:-8000}:8000"
+      - "8000:8000"
     volumes:
       - chroma_data:/chroma/chroma
     environment:
@@ -59,16 +57,16 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
-    restart: unless-stopped
 
-  # AI Engine (Python FastAPI)
+  # AI Engine (FastAPI)
   ai-engine:
     build:
       context: ./ai-engine
       dockerfile: Dockerfile
+      target: development
     container_name: humanwriter-ai-engine
     ports:
-      - "${AI_ENGINE_PORT:-8001}:8001"
+      - "8001:8001"
     environment:
       - OLLAMA_HOST=${OLLAMA_HOST:-http://host.docker.internal:11434}
       - CHROMADB_HOST=chromadb
@@ -76,10 +74,10 @@ services:
       - POSTGRES_URL=postgresql://${POSTGRES_USER:-humanwriter}:${POSTGRES_PASSWORD:-dev_password}@postgres:5432/${POSTGRES_DB:-humanwriter_db}
       - REDIS_URL=redis://redis:6379
       - MODEL_NAME=${MODEL_NAME:-llama3.1:8b}
-      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
     volumes:
-      - ./ai-engine/models:/app/models
       - ./ai-engine/src:/app/src
+      - ./ai-engine/models:/app/models
     depends_on:
       postgres:
         condition: service_healthy
@@ -90,18 +88,18 @@ services:
     networks:
       - humanwriter-network
     restart: unless-stopped
-    # Note: Ollama runs on host machine, not in Docker
     extra_hosts:
       - "host.docker.internal:host-gateway"
 
-  # Backend API Gateway (Node.js + Express)
+  # Backend API (Express)
   backend-api:
     build:
       context: ./backend-api
       dockerfile: Dockerfile
+      target: development
     container_name: humanwriter-backend
     ports:
-      - "${BACKEND_PORT:-3001}:3001"
+      - "3001:3001"
     environment:
       - NODE_ENV=${NODE_ENV:-development}
       - PORT=3001
@@ -109,11 +107,11 @@ services:
       - REDIS_URL=redis://redis:6379
       - AI_ENGINE_URL=http://ai-engine:8001
       - JWT_SECRET=${JWT_SECRET:-your-jwt-secret-change-this}
-      - JWT_EXPIRES_IN=${JWT_EXPIRES_IN:-7d}
+      - JWT_EXPIRES_IN=7d
       - CORS_ORIGIN=${CORS_ORIGIN:-http://localhost:3000}
     volumes:
-      - ./backend-api/uploads:/app/uploads
       - ./backend-api/src:/app/src
+      - backend_uploads:/app/uploads
     depends_on:
       postgres:
         condition: service_healthy
@@ -125,7 +123,7 @@ services:
       - humanwriter-network
     restart: unless-stopped
 
-  # Frontend Web Application (Next.js 14)
+  # Frontend (Next.js)
   webapp:
     build:
       context: ./webapp
@@ -133,51 +131,24 @@ services:
       target: development
     container_name: humanwriter-webapp
     ports:
-      - "${WEBAPP_PORT:-3000}:3000"
+      - "3000:3000"
     environment:
       - NODE_ENV=${NODE_ENV:-development}
       - DATABASE_URL=postgresql://${POSTGRES_USER:-humanwriter}:${POSTGRES_PASSWORD:-dev_password}@postgres:5432/${POSTGRES_DB:-humanwriter_db}
       - NEXTAUTH_URL=${NEXTAUTH_URL:-http://localhost:3000}
-      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
-      - API_URL=http://backend-api:3001
-      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:3001}
+      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:-generate-with-openssl-rand}
+      - NEXT_PUBLIC_API_URL=${API_URL:-http://localhost:3001}
     volumes:
       - ./webapp/src:/app/src
       - ./webapp/public:/app/public
-      - ./webapp/.next:/app/.next
+      - webapp_node_modules:/app/node_modules
+      - webapp_next:/app/.next
     depends_on:
-      postgres:
-        condition: service_healthy
-      backend-api:
-        condition: service_started
+      - postgres
+      - backend-api
     networks:
       - humanwriter-network
     restart: unless-stopped
-
-  # Scraper Service (Node.js + Puppeteer)
-  scraper:
-    build:
-      context: ./scraper
-      dockerfile: Dockerfile
-    container_name: humanwriter-scraper
-    environment:
-      - NODE_ENV=${NODE_ENV:-development}
-      - DATABASE_URL=postgresql://${POSTGRES_USER:-humanwriter}:${POSTGRES_PASSWORD:-dev_password}@postgres:5432/${POSTGRES_DB:-humanwriter_db}
-      - DATA_DIR=/app/data
-      - MAX_CONCURRENT_SCRAPERS=${SCRAPER_MAX_CONCURRENT:-5}
-      - RATE_LIMIT_MS=${SCRAPER_RATE_LIMIT_MS:-2000}
-      - MAX_RETRIES=${SCRAPER_MAX_RETRIES:-3}
-    volumes:
-      - ./scraper/data:/app/data
-      - ./scraper/src:/app/src
-    depends_on:
-      postgres:
-        condition: service_healthy
-    networks:
-      - humanwriter-network
-    restart: "no"  # Run on-demand only
-    profiles:
-      - scraper  # Only start when explicitly requested
 
 networks:
   humanwriter-network:
@@ -191,3 +162,9 @@ volumes:
     name: humanwriter-redis-data
   chroma_data:
     name: humanwriter-chroma-data
+  backend_uploads:
+    name: humanwriter-backend-uploads
+  webapp_node_modules:
+    name: humanwriter-webapp-node-modules
+  webapp_next:
+    name: humanwriter-webapp-next
