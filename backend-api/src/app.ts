@@ -16,6 +16,7 @@ import generationRoutes from './routes/generation.routes';
 import corpusRoutes from './routes/corpus.routes';
 import adminRoutes from './routes/admin.routes';
 import verificationRoutes from './routes/verification.routes';
+import plagiarismRoutes from './routes/plagiarism.routes';
 
 /**
  * Create and configure Express application
@@ -117,6 +118,9 @@ const createApp = (): Application => {
   // Verification routes
   app.use('/api/verify', verificationRoutes);
 
+  // Plagiarism routes
+  app.use('/api/plagiarism', plagiarismRoutes);
+
   // ==========================================
   // API INFO ENDPOINT
   // ==========================================
@@ -134,6 +138,7 @@ const createApp = (): Application => {
           corpus: '/api/corpus',
           admin: '/api/admin',
           verify: '/api/verify',
+          plagiarism: '/api/plagiarism',
         },
         documentation: '/api-docs',
       },

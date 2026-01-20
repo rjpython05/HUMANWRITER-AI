@@ -1,8 +1,7 @@
 import { Router, Request, Response, NextFunction } from 'express';
-import { body, param, query } from 'express-validator';
-import { validate } from '../middleware/validate.middleware';
-import { authenticate } from '../middleware/auth.middleware';
-import { asyncHandler } from '../middleware/async-handler.middleware';
+import { body, param, query, validationResult } from 'express-validator';
+import { authenticateToken } from '../middleware/auth.middleware';
+import { asyncHandler } from '../middleware/error-handler.middleware';
 import { logger } from '../utils/logger';
 import * as plagiarismService from '../services/plagiarism.service';
 import { PrismaClient, SimilarityRisk } from '@prisma/client';
@@ -11,12 +10,26 @@ const router = Router();
 const prisma = new PrismaClient();
 
 /**
+ * Validation middleware
+ */
+const validate = (req: any, res: any, next: any) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({
+      success: false,
+      errors: errors.array(),
+    });
+  }
+  next();
+};
+
+/**
  * POST /api/plagiarism/check
  * Check text for plagiarism
  */
 router.post(
   '/check',
-  authenticate,
+  authenticateToken,
   [
     body('text')
       .isString()
@@ -110,7 +123,7 @@ router.post(
  */
 router.get(
   '/report/:id',
-  authenticate,
+  authenticateToken,
   [param('id').isString().withMessage('Report ID is required')],
   validate,
   asyncHandler(async (req: Request, res: Response) => {
@@ -152,7 +165,7 @@ router.get(
  */
 router.get(
   '/reports',
-  authenticate,
+  authenticateToken,
   [
     query('limit')
       .optional()
@@ -204,7 +217,7 @@ router.get(
  */
 router.post(
   '/sources',
-  authenticate,
+  authenticateToken,
   [
     body('text')
       .isString()
@@ -241,7 +254,7 @@ router.post(
  */
 router.get(
   '/source/:sourceId',
-  authenticate,
+  authenticateToken,
   [param('sourceId').isString().withMessage('Source ID is required')],
   validate,
   asyncHandler(async (req: Request, res: Response) => {
@@ -261,7 +274,7 @@ router.get(
  */
 router.post(
   '/compare/:sourceId',
-  authenticate,
+  authenticateToken,
   [
     param('sourceId').isString().withMessage('Source ID is required'),
     body('text')
@@ -288,7 +301,7 @@ router.post(
  */
 router.post(
   '/export',
-  authenticate,
+  authenticateToken,
   [
     body('reportId').isString().withMessage('Report ID is required'),
     body('format')
@@ -364,7 +377,7 @@ router.post(
  */
 router.delete(
   '/report/:id',
-  authenticate,
+  authenticateToken,
   [param('id').isString().withMessage('Report ID is required')],
   validate,
   asyncHandler(async (req: Request, res: Response) => {
@@ -417,7 +430,7 @@ router.delete(
  */
 router.get(
   '/stats',
-  authenticate,
+  authenticateToken,
   asyncHandler(async (req: Request, res: Response) => {
     const userId = (req as any).user.id;
     const user = (req as any).user;

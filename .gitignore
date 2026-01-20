@@ -102,3 +102,4 @@ chroma_data/
 
 # Monitoring
 monitoring/data/
+*.tsbuildinfo
