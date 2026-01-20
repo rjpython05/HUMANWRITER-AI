@@ -31,8 +31,8 @@ export const createUser = async (
       throwApiError('User with this email already exists', 409, 'USER_EXISTS');
     }
 
-    // Hash password
-    const hashedPassword = await bcrypt.hash(data.password, 10);
+    // Hash password with 12 rounds for better security (OWASP recommendation)
+    const hashedPassword = await bcrypt.hash(data.password, 12);
 
     // Create user
     const user = await prisma.user.create({
@@ -274,8 +274,8 @@ export const updateUserProfile = async (
         throwApiError('Current password is incorrect', 401, 'INVALID_PASSWORD');
       }
 
-      // Hash new password
-      data.password = await bcrypt.hash(data.password, 10);
+      // Hash new password with 12 rounds for better security
+      data.password = await bcrypt.hash(data.password, 12);
     }
 
     // If updating email, check if new email is already taken

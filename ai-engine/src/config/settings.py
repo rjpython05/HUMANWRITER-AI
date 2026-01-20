@@ -6,11 +6,14 @@ class Settings(BaseSettings):
     app_name: str = "HumanWriter AI Engine"
     version: str = "1.0.0"
     debug: bool = False
-    
+
     # Server
     host: str = "0.0.0.0"
     port: int = 8001
     workers: int = 1
+
+    # CORS - Allowed origins (comma-separated)
+    env_origins: Optional[str] = None
     
     # Ollama
     ollama_host: str = "http://localhost:11434"

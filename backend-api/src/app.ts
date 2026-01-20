@@ -7,6 +7,8 @@ import { config } from './config/config';
 import { logger, morganStream } from './utils/logger';
 import { errorHandler, notFoundHandler } from './middleware/error-handler.middleware';
 import { generalRateLimiter } from './middleware/rate-limit.middleware';
+import { allSecurityHeaders } from './middleware/security-headers.middleware';
+import { sanitizeAllInputs, detectSuspiciousPatterns } from './middleware/input-sanitization.middleware';
 
 // Import routes
 import usersRoutes from './routes/users.routes';
@@ -25,7 +27,7 @@ const createApp = (): Application => {
   // MIDDLEWARE
   // ==========================================
 
-  // Security middleware
+  // Basic security middleware with Helmet
   app.use(helmet({
     contentSecurityPolicy: {
       directives: {
@@ -37,6 +39,9 @@ const createApp = (): Application => {
     },
     crossOriginEmbedderPolicy: false,
   }));
+
+  // Additional security headers (OWASP recommended)
+  app.use(allSecurityHeaders);
 
   // CORS configuration
   app.use(cors({
@@ -57,6 +62,10 @@ const createApp = (): Application => {
   // HTTP request logging
   const morganFormat = config.env === 'production' ? 'combined' : 'dev';
   app.use(morgan(morganFormat, { stream: morganStream }));
+
+  // Input sanitization and suspicious pattern detection
+  app.use(sanitizeAllInputs());
+  app.use(detectSuspiciousPatterns);
 
   // General rate limiting
   app.use('/api/', generalRateLimiter);

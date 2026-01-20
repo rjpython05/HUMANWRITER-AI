@@ -33,13 +33,24 @@ app = FastAPI(
     redoc_url="/redoc",
 )
 
-# CORS middleware
+# CORS middleware - Restricted for security
+# In production, only allow requests from the backend API
+allowed_origins = [
+    "http://localhost:3000",  # Frontend
+    "http://localhost:3001",  # Backend API
+]
+
+# Add production origins from environment
+if settings.env_origins:
+    allowed_origins.extend(settings.env_origins.split(','))
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # TODO: Restrict in production
+    allow_origins=allowed_origins if settings.debug else allowed_origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE"],
+    allow_headers=["Content-Type", "Authorization", "X-API-Key"],
+    max_age=3600,  # Cache preflight requests for 1 hour
 )
 
 # Include routers

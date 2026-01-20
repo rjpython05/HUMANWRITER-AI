@@ -276,6 +276,7 @@ model PlagiarismReport {
   id                  String          @id @default(cuid())
   userId              String?
   generationId        String?
+  generation          Generation?     @relation(fields: [generationId], references: [id], onDelete: SetNull)
   text                String          @db.Text
 
   // Overall similarity analysis
@@ -495,35 +496,3 @@ model RefreshToken {
   @@map("refresh_tokens")
 }
 
-// ==========================================
-// PLAGIARISM DETECTION
-// ==========================================
-
-model PlagiarismReport {
-  id                  String          @id @default(cuid())
-  generationId        String?
-  generation          Generation?     @relation(fields: [generationId], references: [id], onDelete: SetNull)
-
-  text                String          @db.Text
-
-  // Similarity metrics
-  overallSimilarity   Float           // 0-1 score
-  riskLevel           SimilarityRisk
-
-  // Matched sources and passages (stored as JSON)
-  sources             Json            // Array of matching sources with metadata
-  matchedPassages     Json            // Array of matched text segments
-
-  createdAt           DateTime        @default(now())
-
-  @@index([generationId])
-  @@index([riskLevel])
-  @@index([createdAt(sort: Desc)])
-  @@map("plagiarism_reports")
-}
-
-enum SimilarityRisk {
-  SAFE      // < 15%
-  MODERATE  // 15-30%
-  HIGH      // > 30%
-}
