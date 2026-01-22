@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getServerSession } from "@/lib/auth";
 import { UsersTable } from "@/components/admin/users-table";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { prisma } from "@/lib/prisma";
 
 export default async function AdminUsersPage() {
   const session = await getServerSession();
@@ -9,6 +10,24 @@ export default async function AdminUsersPage() {
   if (!session || session.user.role !== "ADMIN") {
     redirect("/dashboard");
   }
+
+  // Fetch users from database
+  const users = await prisma.user.findMany({
+    select: {
+      id: true,
+      email: true,
+      name: true,
+      role: true,
+      plan: true,
+      isActive: true,
+      generationsCount: true,
+      createdAt: true,
+      lastLoginAt: true,
+    },
+    orderBy: {
+      createdAt: 'desc',
+    },
+  });
 
   return (
     <div className="space-y-6">
@@ -29,7 +48,7 @@ export default async function AdminUsersPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <UsersTable />
+          <UsersTable users={users} />
         </CardContent>
       </Card>
     </div>

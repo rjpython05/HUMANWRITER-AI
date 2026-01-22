@@ -30,7 +30,7 @@ export const prisma = global.prisma || new PrismaClient(prismaOptions);
 
 // Log Prisma queries in development
 if (process.env.NODE_ENV === 'development') {
-  prisma.$on('query' as any, (e: any) => {
+  (prisma.$on as any)('query', (e: any) => {
     logger.debug('Prisma Query', {
       query: e.query,
       params: e.params,
@@ -40,7 +40,7 @@ if (process.env.NODE_ENV === 'development') {
 }
 
 // Log Prisma errors
-prisma.$on('error' as any, (e: any) => {
+(prisma.$on as any)('error', (e: any) => {
   logger.error('Prisma Error', {
     message: e.message,
     target: e.target,
@@ -48,7 +48,7 @@ prisma.$on('error' as any, (e: any) => {
 });
 
 // Log Prisma warnings
-prisma.$on('warn' as any, (e: any) => {
+(prisma.$on as any)('warn', (e: any) => {
   logger.warn('Prisma Warning', {
     message: e.message,
   });
@@ -102,10 +102,10 @@ export const checkDatabaseHealth = async (): Promise<boolean> => {
  * Execute a database transaction
  */
 export const executeTransaction = async <T>(
-  fn: (tx: Omit<PrismaClient, '$connect' | '$disconnect' | '$on' | '$transaction' | '$use'>) => Promise<T>
+  fn: (tx: any) => Promise<T>
 ): Promise<T> => {
   try {
-    return await prisma.$transaction(fn);
+    return await (prisma.$transaction as any)(fn);
   } catch (error) {
     logger.error('Transaction failed', { error });
     throw error;

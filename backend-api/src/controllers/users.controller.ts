@@ -121,14 +121,14 @@ export const getProfile = async (
     }
 
     // Get user from database
-    const user = await userService.findUserById(req.user.id);
+    const user = await userService.findUserById(req.user!.id);
 
     if (!user) {
       throwApiError('User not found', 404, 'USER_NOT_FOUND');
     }
 
     // Convert to response format
-    const userResponse = userService.toUserResponse(user);
+    const userResponse = userService.toUserResponse(user!);
 
     sendSuccess(res, userResponse);
   } catch (error) {
@@ -152,7 +152,7 @@ export const updateProfile = async (
     const updates = req.body;
 
     // Update user profile
-    const user = await userService.updateUserProfile(req.user.id, updates);
+    const user = await userService.updateUserProfile(req.user!.id, updates);
 
     // Convert to response format
     const userResponse = userService.toUserResponse(user);
@@ -204,18 +204,18 @@ export const getStats = async (
       throwApiError('Authentication required', 401, 'NO_AUTH');
     }
 
-    const user = await userService.findUserById(req.user.id);
+    const user = await userService.findUserById(req.user!.id);
 
     if (!user) {
       throwApiError('User not found', 404, 'USER_NOT_FOUND');
     }
 
     const stats = {
-      generationsCount: user.generationsCount,
-      generationsThisMonth: user.generationsThisMonth,
-      lastGenerationAt: user.lastGenerationAt,
-      plan: user.plan,
-      memberSince: user.createdAt,
+      generationsCount: user!.generationsCount,
+      generationsThisMonth: user!.generationsThisMonth,
+      lastGenerationAt: user!.lastGenerationAt,
+      plan: user!.plan,
+      memberSince: user!.createdAt,
     };
 
     sendSuccess(res, stats);
@@ -240,8 +240,8 @@ export const checkLimit = async (
       throwApiError('Authentication required', 401, 'NO_AUTH');
     }
 
-    const canGenerate = await userService.checkGenerationLimit(req.user.id);
-    const user = await userService.findUserById(req.user.id);
+    const canGenerate = await userService.checkGenerationLimit(req.user!.id);
+    const user = await userService.findUserById(req.user!.id);
 
     if (!user) {
       throwApiError('User not found', 404, 'USER_NOT_FOUND');
@@ -254,15 +254,15 @@ export const checkLimit = async (
       ENTERPRISE: -1,
     };
 
-    const limit = limits[user.plan];
+    const limit = limits[user!.plan];
     const remaining =
-      limit === -1 ? -1 : limit - user.generationsThisMonth;
+      limit === -1 ? -1 : limit - user!.generationsThisMonth;
 
     sendSuccess(res, {
       canGenerate,
-      plan: user.plan,
+      plan: user!.plan,
       limit,
-      used: user.generationsThisMonth,
+      used: user!.generationsThisMonth,
       remaining,
     });
   } catch (error) {

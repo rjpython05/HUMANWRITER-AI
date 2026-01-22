@@ -99,12 +99,12 @@ export const validateCredentials = async (
     }
 
     // Check if user is active
-    if (!user.isActive) {
+    if (!user!.isActive) {
       throwApiError('Account is disabled', 403, 'ACCOUNT_DISABLED');
     }
 
     // Verify password
-    const isPasswordValid = await bcrypt.compare(password, user.password);
+    const isPasswordValid = await bcrypt.compare(password, user!.password);
 
     if (!isPasswordValid) {
       throwApiError('Invalid credentials', 401, 'INVALID_CREDENTIALS');
@@ -112,11 +112,11 @@ export const validateCredentials = async (
 
     // Update last login
     await prisma.user.update({
-      where: { id: user.id },
+      where: { id: user!.id },
       data: { lastLoginAt: new Date() },
     });
 
-    return user;
+    return user!;
   } catch (error) {
     logger.error('Failed to validate credentials', { error, email });
     throw error;
@@ -137,9 +137,10 @@ export const generateTokens = async (user: User): Promise<AuthTokens> => {
     };
 
     // Generate access token
-    const accessToken = jwt.sign(accessPayload, config.jwtSecret, {
-      expiresIn: config.jwtExpiresIn,
-    });
+    const accessTokenOptions = {
+      expiresIn: config.jwtExpiresIn as any,
+    };
+    const accessToken = jwt.sign(accessPayload, config.jwtSecret, accessTokenOptions);
 
     // Generate refresh token ID
     const tokenId = uuidv4();
@@ -149,9 +150,10 @@ export const generateTokens = async (user: User): Promise<AuthTokens> => {
     };
 
     // Generate refresh token
-    const refreshToken = jwt.sign(refreshPayload, config.jwtSecret, {
-      expiresIn: config.jwtRefreshExpiresIn,
-    });
+    const refreshTokenOptions = {
+      expiresIn: config.jwtRefreshExpiresIn as any,
+    };
+    const refreshToken = jwt.sign(refreshPayload, config.jwtSecret, refreshTokenOptions);
 
     // Store refresh token in database
     const expiresAt = new Date();
@@ -200,7 +202,7 @@ export const refreshAccessToken = async (
     }
 
     // Check if token is expired
-    if (storedToken.expiresAt < new Date()) {
+    if (storedToken!.expiresAt < new Date()) {
       throwApiError('Refresh token expired', 401, 'REFRESH_TOKEN_EXPIRED');
     }
 
@@ -212,7 +214,7 @@ export const refreshAccessToken = async (
     }
 
     // Generate new tokens
-    return await generateTokens(user);
+    return await generateTokens(user!);
   } catch (error) {
     logger.error('Failed to refresh access token', { error });
     throw error;
@@ -266,8 +268,8 @@ export const updateUserProfile = async (
       }
 
       const isPasswordValid = await bcrypt.compare(
-        data.currentPassword,
-        user.password
+        data.currentPassword!,
+        user!.password
       );
 
       if (!isPasswordValid) {
@@ -279,7 +281,7 @@ export const updateUserProfile = async (
     }
 
     // If updating email, check if new email is already taken
-    if (data.email && data.email !== user.email) {
+    if (data.email && data.email !== user!.email) {
       const existingUser = await findUserByEmail(data.email);
 
       if (existingUser) {

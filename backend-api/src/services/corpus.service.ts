@@ -169,15 +169,15 @@ export const deleteDocument = async (documentId: string): Promise<void> => {
 
     // Delete files from disk
     try {
-      await fileService.deleteFile(document.filePath);
-      if (document.processedPath !== document.filePath) {
-        await fileService.deleteFile(document.processedPath);
+      await fileService.deleteFile(document!.filePath);
+      if (document!.processedPath !== document!.filePath) {
+        await fileService.deleteFile(document!.processedPath);
       }
     } catch (error) {
       logger.warn('Failed to delete document files', {
         error,
         documentId,
-        filePath: document.filePath,
+        filePath: document!.filePath,
       });
       // Continue with database deletion even if file deletion fails
     }

@@ -210,6 +210,7 @@ export const verifyText = async (
         { message: error.message }
       );
     }
+    throw error; // TypeScript safety: ensure all paths return
   }
 };
 
@@ -247,6 +248,7 @@ export const calculateSafetyScore = async (
         { message: error.message }
       );
     }
+    throw error; // TypeScript safety: ensure all paths return
   }
 };
 
@@ -277,11 +279,11 @@ export const getVerificationById = async (
     }
 
     // Check user ownership if userId provided
-    if (userId && verification.userId !== userId) {
+    if (userId && verification!.userId !== userId) {
       throwApiError('Access denied', 403, 'FORBIDDEN');
     }
 
-    return verification;
+    return verification!;
   } catch (error: any) {
     if (error.code === 'NOT_FOUND' || error.code === 'FORBIDDEN') {
       throw error;
@@ -298,6 +300,7 @@ export const getVerificationById = async (
       'DATABASE_ERROR',
       { message: error.message }
     );
+    throw error; // TypeScript safety: ensure all paths return
   }
 };
 
@@ -347,6 +350,7 @@ export const getVerificationHistory = async (
       'DATABASE_ERROR',
       { message: error.message }
     );
+    throw error; // TypeScript safety: ensure all paths return
   }
 };
 

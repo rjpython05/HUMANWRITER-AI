@@ -36,21 +36,21 @@ export const uploadDocument = async (
     };
 
     logger.info('Processing document upload', {
-      userId: req.user.id,
+      userId: req.user!.id,
       title: metadata.title,
-      filename: req.file.originalname,
+      filename: req.file!.originalname,
     });
 
     // Process and save document
     const document = await corpusService.processUpload(
-      req.file,
+      req.file!,
       metadata,
-      req.user.id
+      req.user!.id
     );
 
     logger.info('Document uploaded successfully', {
       documentId: document.id,
-      userId: req.user.id,
+      userId: req.user!.id,
     });
 
     // Convert to response format
@@ -98,18 +98,19 @@ export const getDocument = async (
 ): Promise<void> => {
   try {
     const { id } = req.params;
+    const docId = Array.isArray(id) ? id[0] : id;
 
-    logger.debug('Getting document', { documentId: id });
+    logger.debug('Getting document', { documentId: docId });
 
     // Get document
-    const document = await corpusService.getDocumentById(id);
+    const document = await corpusService.getDocumentById(docId);
 
     if (!document) {
       throwApiError('Document not found', 404, 'DOCUMENT_NOT_FOUND');
     }
 
     // Convert to response format
-    const response = corpusService.toDocumentResponse(document);
+    const response = corpusService.toDocumentResponse(document!);
 
     sendSuccess(res, response);
   } catch (error) {
@@ -134,18 +135,19 @@ export const deleteDocument = async (
     }
 
     const { id } = req.params;
+    const docId = Array.isArray(id) ? id[0] : id;
 
     logger.info('Deleting document', {
-      documentId: id,
-      userId: req.user.id,
+      documentId: docId,
+      userId: req.user!.id,
     });
 
     // Delete document
-    await corpusService.deleteDocument(id);
+    await corpusService.deleteDocument(docId);
 
     logger.info('Document deleted successfully', {
-      documentId: id,
-      userId: req.user.id,
+      documentId: docId,
+      userId: req.user!.id,
     });
 
     sendSuccess(res, { message: 'Document deleted successfully' });
@@ -172,19 +174,20 @@ export const updateDocument = async (
     }
 
     const { id } = req.params;
+    const docId = Array.isArray(id) ? id[0] : id;
     const updates = req.body;
 
     logger.info('Updating document', {
-      documentId: id,
-      userId: req.user.id,
+      documentId: docId,
+      userId: req.user!.id,
     });
 
     // Update document
-    const document = await corpusService.updateDocument(id, updates);
+    const document = await corpusService.updateDocument(docId, updates);
 
     logger.info('Document updated successfully', {
-      documentId: id,
-      userId: req.user.id,
+      documentId: docId,
+      userId: req.user!.id,
     });
 
     // Convert to response format
@@ -214,6 +217,7 @@ export const markVectorized = async (
     }
 
     const { id } = req.params;
+    const docId = Array.isArray(id) ? id[0] : id;
     const { embeddingId } = req.body;
 
     if (!embeddingId) {
@@ -221,13 +225,13 @@ export const markVectorized = async (
     }
 
     logger.info('Marking document as vectorized', {
-      documentId: id,
+      documentId: docId,
       embeddingId,
-      userId: req.user.id,
+      userId: req.user!.id,
     });
 
     // Mark as vectorized
-    await corpusService.markAsVectorized(id, embeddingId);
+    await corpusService.markAsVectorized(docId, embeddingId);
 
     sendSuccess(res, { message: 'Document marked as vectorized' });
   } catch (error) {
@@ -252,6 +256,7 @@ export const markValidated = async (
     }
 
     const { id } = req.params;
+    const docId = Array.isArray(id) ? id[0] : id;
     const { validationScore, qualityIssues } = req.body;
 
     if (validationScore === undefined) {
@@ -263,14 +268,14 @@ export const markValidated = async (
     }
 
     logger.info('Marking document as validated', {
-      documentId: id,
+      documentId: docId,
       validationScore,
-      userId: req.user.id,
+      userId: req.user!.id,
     });
 
     // Mark as validated
     await corpusService.markAsValidated(
-      id,
+      docId,
       validationScore,
       qualityIssues || []
     );

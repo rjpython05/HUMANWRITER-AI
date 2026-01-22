@@ -1,4 +1,4 @@
-export type UserRole = "USER" | "ADMIN";
+export type UserRole = "GUEST" | "USER" | "ADMIN";
 export type UserStatus = "ACTIVE" | "SUSPENDED" | "BANNED";
 
 export interface User {
@@ -55,7 +55,7 @@ declare module "next-auth" {
   }
 }
 
-declare module "next-auth/jwt" {
+declare module "@auth/core/jwt" {
   interface JWT {
     id: string;
     role: UserRole;

@@ -23,7 +23,7 @@ export const createGeneration = async (
     }
 
     // Check generation limit
-    const canGenerate = await userService.checkGenerationLimit(req.user.id);
+    const canGenerate = await userService.checkGenerationLimit(req.user!.id);
 
     if (!canGenerate) {
       throwApiError(
@@ -36,7 +36,7 @@ export const createGeneration = async (
     const data: GenerationCreateDto = req.body;
 
     logger.info('Starting text generation', {
-      userId: req.user.id,
+      userId: req.user!.id,
       discipline: data.discipline,
       promptLength: data.prompt.length,
     });
@@ -50,7 +50,7 @@ export const createGeneration = async (
     // Save generation to database
     const generation = await prisma.generation.create({
       data: {
-        userId: req.user.id,
+        userId: req.user!.id,
         prompt: data.prompt,
         discipline: data.discipline,
         modelUsed: data.modelUsed || 'default',
@@ -68,12 +68,12 @@ export const createGeneration = async (
     });
 
     // Increment user generation count
-    await userService.incrementGenerationCount(req.user.id);
+    await userService.incrementGenerationCount(req.user!.id);
 
     const totalDuration = Date.now() - startTime;
 
     logger.info('Text generation completed', {
-      userId: req.user.id,
+      userId: req.user!.id,
       generationId: generation.id,
       duration: totalDuration,
     });
@@ -144,7 +144,7 @@ export const streamGeneration = async (
     }
 
     // Check generation limit
-    const canGenerate = await userService.checkGenerationLimit(req.user.id);
+    const canGenerate = await userService.checkGenerationLimit(req.user!.id);
 
     if (!canGenerate) {
       throwApiError(
@@ -157,7 +157,7 @@ export const streamGeneration = async (
     const data: GenerationCreateDto = req.body;
 
     logger.info('Starting streaming generation', {
-      userId: req.user.id,
+      userId: req.user!.id,
       discipline: data.discipline,
     });
 
@@ -233,10 +233,11 @@ export const getGeneration = async (
     }
 
     const { id } = req.params;
+    const genId = Array.isArray(id) ? id[0] : id;
 
     // Get generation
     const generation = await prisma.generation.findUnique({
-      where: { id },
+      where: { id: genId },
     });
 
     if (!generation) {
@@ -245,8 +246,8 @@ export const getGeneration = async (
 
     // Check if user owns this generation (or is admin)
     if (
-      generation.userId !== req.user.id &&
-      req.user.role !== 'ADMIN'
+      generation!.userId !== req.user!.id &&
+      req.user!.role !== 'ADMIN'
     ) {
       throwApiError(
         'You do not have permission to access this generation',
@@ -256,18 +257,18 @@ export const getGeneration = async (
     }
 
     sendSuccess(res, {
-      id: generation.id,
-      prompt: generation.prompt,
-      discipline: generation.discipline,
-      modelUsed: generation.modelUsed,
-      rawText: generation.rawText,
-      humanizedText: generation.humanizedText,
-      metrics: generation.metrics,
-      duration: generation.duration,
-      tokensGenerated: generation.tokensGenerated,
-      status: generation.status,
-      errorMessage: generation.errorMessage,
-      createdAt: generation.createdAt,
+      id: generation!.id,
+      prompt: generation!.prompt,
+      discipline: generation!.discipline,
+      modelUsed: generation!.modelUsed,
+      rawText: generation!.rawText,
+      humanizedText: generation!.humanizedText,
+      metrics: generation!.metrics,
+      duration: generation!.duration,
+      tokensGenerated: generation!.tokensGenerated,
+      status: generation!.status,
+      errorMessage: generation!.errorMessage,
+      createdAt: generation!.createdAt,
     });
   } catch (error) {
     logger.error('Failed to get generation', {
@@ -296,7 +297,7 @@ export const getHistory = async (
 
     // Build where clause
     const where: any = {
-      userId: req.user.id,
+      userId: req.user!.id,
     };
 
     if (query.discipline) {
@@ -346,7 +347,7 @@ export const getHistory = async (
     const meta = getPaginationMeta(page, limit, totalItems);
 
     logger.info('Generation history retrieved', {
-      userId: req.user.id,
+      userId: req.user!.id,
       count: generations.length,
       totalItems,
     });
@@ -374,10 +375,11 @@ export const deleteGeneration = async (
     }
 
     const { id } = req.params;
+    const genId = Array.isArray(id) ? id[0] : id;
 
     // Get generation
     const generation = await prisma.generation.findUnique({
-      where: { id },
+      where: { id: genId },
     });
 
     if (!generation) {
@@ -386,8 +388,8 @@ export const deleteGeneration = async (
 
     // Check if user owns this generation (or is admin)
     if (
-      generation.userId !== req.user.id &&
-      req.user.role !== 'ADMIN'
+      generation!.userId !== req.user!.id &&
+      req.user!.role !== 'ADMIN'
     ) {
       throwApiError(
         'You do not have permission to delete this generation',
@@ -398,10 +400,10 @@ export const deleteGeneration = async (
 
     // Delete generation
     await prisma.generation.delete({
-      where: { id },
+      where: { id: genId },
     });
 
-    logger.info('Generation deleted', { generationId: id, userId: req.user.id });
+    logger.info('Generation deleted', { generationId: genId, userId: req.user!.id });
 
     sendSuccess(res, { message: 'Generation deleted successfully' });
   } catch (error) {
@@ -427,19 +429,19 @@ export const getStats = async (
 
     // Get user's generation statistics
     const totalGenerations = await prisma.generation.count({
-      where: { userId: req.user.id },
+      where: { userId: req.user!.id },
     });
 
     const successfulGenerations = await prisma.generation.count({
       where: {
-        userId: req.user.id,
+        userId: req.user!.id,
         status: GenerationStatus.COMPLETED,
       },
     });
 
     const failedGenerations = await prisma.generation.count({
       where: {
-        userId: req.user.id,
+        userId: req.user!.id,
         status: GenerationStatus.FAILED,
       },
     });
@@ -447,7 +449,7 @@ export const getStats = async (
     // Get average duration
     const durationAggregate = await prisma.generation.aggregate({
       where: {
-        userId: req.user.id,
+        userId: req.user!.id,
         status: GenerationStatus.COMPLETED,
       },
       _avg: {
@@ -458,7 +460,7 @@ export const getStats = async (
     // Get generations by discipline
     const byDiscipline = await prisma.generation.groupBy({
       by: ['discipline'],
-      where: { userId: req.user.id },
+      where: { userId: req.user!.id },
       _count: true,
     });
 

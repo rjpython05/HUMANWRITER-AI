@@ -116,9 +116,12 @@ export const updateUser = async (
       updates,
     });
 
+    // Normalize id parameter
+    const userId = Array.isArray(id) ? id[0] : id;
+
     // Update user
     const user = await prisma.user.update({
-      where: { id },
+      where: { id: userId },
       data: updates,
       select: {
         id: true,
@@ -161,25 +164,26 @@ export const deleteUser = async (
 ): Promise<void> => {
   try {
     const { id } = req.params;
+    const userId = Array.isArray(id) ? id[0] : id;
 
     // Prevent admin from deleting themselves
-    if (id === req.user?.id) {
+    if (userId === req.user?.id) {
       throwApiError('Cannot delete your own account', 400, 'CANNOT_DELETE_SELF');
     }
 
     logger.info('Admin: Deleting user', {
       adminId: req.user?.id,
-      userId: id,
+      userId: userId,
     });
 
     // Delete user (cascade will delete related records)
     await prisma.user.delete({
-      where: { id },
+      where: { id: userId },
     });
 
     logger.info('Admin: User deleted successfully', {
       adminId: req.user?.id,
-      userId: id,
+      userId: userId,
     });
 
     sendSuccess(res, { message: 'User deleted successfully' });
@@ -504,14 +508,15 @@ export const resetUserGenerations = async (
 ): Promise<void> => {
   try {
     const { id } = req.params;
+    const userId = Array.isArray(id) ? id[0] : id;
 
     logger.info('Admin: Resetting user generation count', {
       adminId: req.user?.id,
-      userId: id,
+      userId: userId,
     });
 
     await prisma.user.update({
-      where: { id },
+      where: { id: userId },
       data: { generationsThisMonth: 0 },
     });
 

@@ -85,13 +85,14 @@ export const calculateSafetyScore = async (req: Request, res: Response) => {
 export const getVerificationById = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
+    const verificationId = Array.isArray(id) ? id[0] : id;
     const userId = (req as any).user?.id;
 
-    if (!id) {
+    if (!verificationId) {
       throwApiError('Verification ID is required', 400, 'INVALID_INPUT');
     }
 
-    const verification = await verificationService.getVerificationById(id, userId);
+    const verification = await verificationService.getVerificationById(verificationId, userId);
 
     res.json({
       success: true,

@@ -133,7 +133,7 @@ export default function GeneratePage() {
       <VerificationDialog
         open={showVerificationDialog}
         onOpenChange={setShowVerificationDialog}
-        result={verificationResult}
+        result={verificationResult as any}
       />
     </div>
   );

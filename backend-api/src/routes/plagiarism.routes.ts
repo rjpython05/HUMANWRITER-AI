@@ -94,8 +94,8 @@ router.post(
         riskLevel,
         matchedChunks: result.statistics.matchedChunks || 0,
         totalChunks: result.statistics.totalChunksAnalyzed || 0,
-        sources: result.topSources,
-        matchedPassages: result.highlightedPassages,
+        sources: result.topSources as any,
+        matchedPassages: result.highlightedPassages as any,
         methodsUsed: ['vector', 'tfidf'],
         corpusSize: result.statistics.uniqueSourcesFound || 0,
         recommendations: [],
@@ -128,13 +128,14 @@ router.get(
   validate,
   asyncHandler(async (req: Request, res: Response) => {
     const { id } = req.params;
+    const reportId = Array.isArray(id) ? id[0] : id;
     const userId = (req as any).user.id;
 
-    logger.info('Fetching plagiarism report', { reportId: id, userId });
+    logger.info('Fetching plagiarism report', { reportId: reportId, userId });
 
     // Get report from database
     const report = await prisma.plagiarismReport.findUnique({
-      where: { id },
+      where: { id: reportId },
     });
 
     if (!report) {
@@ -259,10 +260,11 @@ router.get(
   validate,
   asyncHandler(async (req: Request, res: Response) => {
     const { sourceId } = req.params;
+    const sourceIdStr = Array.isArray(sourceId) ? sourceId[0] : sourceId;
 
-    logger.info('Fetching source details', { sourceId });
+    logger.info('Fetching source details', { sourceId: sourceIdStr });
 
-    const details = await plagiarismService.getSourceDetails(sourceId);
+    const details = await plagiarismService.getSourceDetails(sourceIdStr);
 
     res.json(details);
   })
@@ -285,11 +287,12 @@ router.post(
   validate,
   asyncHandler(async (req: Request, res: Response) => {
     const { sourceId } = req.params;
+    const sourceIdStr = Array.isArray(sourceId) ? sourceId[0] : sourceId;
     const { text } = req.body;
 
-    logger.info('Comparing with source', { sourceId });
+    logger.info('Comparing with source', { sourceId: sourceIdStr });
 
-    const result = await plagiarismService.compareWithSource(sourceId, text);
+    const result = await plagiarismService.compareWithSource(sourceIdStr, text);
 
     res.json(result);
   })
@@ -382,14 +385,15 @@ router.delete(
   validate,
   asyncHandler(async (req: Request, res: Response) => {
     const { id } = req.params;
+    const reportId = Array.isArray(id) ? id[0] : id;
     const userId = (req as any).user.id;
     const user = (req as any).user;
 
-    logger.info('Deleting plagiarism report', { reportId: id, userId });
+    logger.info('Deleting plagiarism report', { reportId: reportId, userId });
 
     // Get report to check ownership
     const report = await prisma.plagiarismReport.findUnique({
-      where: { id },
+      where: { id: reportId },
     });
 
     if (!report) {
@@ -411,11 +415,11 @@ router.delete(
 
     // Delete from database
     await prisma.plagiarismReport.delete({
-      where: { id },
+      where: { id: reportId },
     });
 
     // Delete from AI Engine cache (non-critical)
-    await plagiarismService.deleteReport(id);
+    await plagiarismService.deleteReport(reportId);
 
     res.json({
       success: true,

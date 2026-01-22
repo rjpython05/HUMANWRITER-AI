@@ -11,7 +11,7 @@ import prisma from "@/lib/prisma";
  */
 
 export const authConfig: NextAuthConfig = {
-  adapter: PrismaAdapter(prisma),
+  adapter: PrismaAdapter(prisma) as any,
   session: {
     strategy: "jwt",
   },
@@ -80,4 +80,6 @@ export const authConfig: NextAuthConfig = {
 
 const handler = NextAuth(authConfig);
 
-export { handler as GET, handler as POST };
+// Wrapper for Next.js 16 compatibility with async params
+export const GET = handler;
+export const POST = handler;

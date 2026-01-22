@@ -177,17 +177,18 @@ export const checkPlagiarism = async (
     });
 
     // Convert snake_case to camelCase
+    const responseData = response.data as any;
     return {
-      reportId: response.data.report_id || response.data.reportId,
-      overallSimilarity: response.data.overall_similarity || response.data.overallSimilarity,
-      similarityPercentage: response.data.similarity_percentage || response.data.similarityPercentage,
-      riskLevel: response.data.risk_level || response.data.riskLevel,
-      summary: response.data.summary,
-      topSources: response.data.top_sources || response.data.topSources,
-      statistics: response.data.statistics,
-      exactMatchesCount: response.data.exact_matches_count || response.data.exactMatchesCount || 0,
-      highlightedPassages: response.data.highlighted_passages || response.data.highlightedPassages || [],
-      processingTimeMs: response.data.processing_time_ms || response.data.processingTimeMs,
+      reportId: responseData.report_id || responseData.reportId,
+      overallSimilarity: responseData.overall_similarity || responseData.overallSimilarity,
+      similarityPercentage: responseData.similarity_percentage || responseData.similarityPercentage,
+      riskLevel: responseData.risk_level || responseData.riskLevel,
+      summary: responseData.summary,
+      topSources: responseData.top_sources || responseData.topSources,
+      statistics: responseData.statistics,
+      exactMatchesCount: responseData.exact_matches_count || responseData.exactMatchesCount || 0,
+      highlightedPassages: responseData.highlighted_passages || responseData.highlightedPassages || [],
+      processingTimeMs: responseData.processing_time_ms || responseData.processingTimeMs,
     };
   } catch (error: any) {
     const duration = Date.now() - startTime;
@@ -214,6 +215,7 @@ export const checkPlagiarism = async (
         { message: error.message }
       );
     }
+    throw error; // TypeScript safety: ensure all paths return
   }
 };
 
@@ -261,10 +263,11 @@ export const findSources = async (
       discipline: data.discipline,
     });
 
+    const responseData = response.data as any;
     return {
-      sources: response.data.sources,
-      totalFound: response.data.total_found || response.data.totalFound,
-      queryText: response.data.query_text || response.data.queryText,
+      sources: responseData.sources,
+      totalFound: responseData.total_found || responseData.totalFound,
+      queryText: responseData.query_text || responseData.queryText,
     };
   } catch (error: any) {
     logger.error('Failed to find sources', { error });
@@ -275,6 +278,7 @@ export const findSources = async (
       'SOURCE_FIND_ERROR',
       { message: error.message }
     );
+    throw error; // TypeScript safety: ensure all paths return
   }
 };
 
@@ -330,6 +334,7 @@ export const compareWithSource = async (
       'COMPARISON_ERROR',
       { message: error.message }
     );
+    throw error; // TypeScript safety: ensure all paths return
   }
 };
 
@@ -358,6 +363,7 @@ export const exportReport = async (
       'EXPORT_ERROR',
       { message: error.message }
     );
+    throw error; // TypeScript safety: ensure all paths return
   }
 };
 

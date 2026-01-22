@@ -121,6 +121,7 @@ export const generateText = async (
         { message: error.message }
       );
     }
+    throw error; // TypeScript safety: ensure all paths return
   }
 };
 
@@ -240,6 +241,7 @@ export const humanizeText = async (
         { message: error.message }
       );
     }
+    throw error; // TypeScript safety: ensure all paths return
   }
 };
 

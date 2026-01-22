@@ -40,7 +40,8 @@ interface VerificationResult {
 interface VerificationDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  text: string;
+  text?: string;
+  result?: VerificationResult | null;
   onReHumanize?: () => void;
   onExport?: () => void;
 }
@@ -49,14 +50,17 @@ export function VerificationDialog({
   open,
   onOpenChange,
   text,
+  result,
   onReHumanize,
   onExport,
 }: VerificationDialogProps) {
   const [isVerifying, setIsVerifying] = useState(false);
-  const [verificationResult, setVerificationResult] = useState<VerificationResult | null>(null);
+  const [verificationResult, setVerificationResult] = useState<VerificationResult | null>(result || null);
   const [error, setError] = useState<string | null>(null);
 
   const handleVerify = async () => {
+    if (!text) return;
+
     setIsVerifying(true);
     setError(null);
 
@@ -98,10 +102,17 @@ export function VerificationDialog({
     onOpenChange(false);
   };
 
-  // Auto-verify when dialog opens
+  // Auto-verify when dialog opens (only if text is provided and no result)
   useState(() => {
-    if (open && !verificationResult && !isVerifying) {
+    if (open && !result && text && !verificationResult && !isVerifying) {
       handleVerify();
+    }
+  });
+
+  // Update verificationResult when result prop changes
+  useState(() => {
+    if (result) {
+      setVerificationResult(result);
     }
   });
 
