@@ -1,89 +1,22 @@
-import { NextAuthOptions } from "next-auth";
-import CredentialsProvider from "next-auth/providers/credentials";
-import { PrismaAdapter } from "@next-auth/prisma-adapter";
-import { compare } from "bcryptjs";
-import prisma from "@/lib/prisma";
-import { env } from "@/env";
-
-export const authOptions: NextAuthOptions = {
-  adapter: PrismaAdapter(prisma),
-  session: {
-    strategy: "jwt",
-  },
-  pages: {
-    signIn: "/login",
-    signOut: "/login",
-    error: "/login",
-  },
-  providers: [
-    CredentialsProvider({
-      name: "credentials",
-      credentials: {
-        email: { label: "Email", type: "email" },
-        password: { label: "Password", type: "password" },
-      },
-      async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) {
-          throw new Error("Invalid credentials");
-        }
-
-        const user = await prisma.user.findUnique({
-          where: {
-            email: credentials.email,
-          },
-        });
-
-        if (!user || !user.password) {
-          throw new Error("Invalid credentials");
-        }
-
-        const isPasswordValid = await compare(credentials.password, user.password);
-
-        if (!isPasswordValid) {
-          throw new Error("Invalid credentials");
-        }
-
-        return {
-          id: user.id,
-          email: user.email,
-          name: user.name,
-          role: user.role,
-        };
-      },
-    }),
-  ],
-  callbacks: {
-    async jwt({ token, user }) {
-      if (user) {
-        token.id = user.id;
-        token.role = user.role;
-      }
-      return token;
-    },
-    async session({ session, token }) {
-      if (session.user) {
-        session.user.id = token.id as string;
-        session.user.role = token.role as string;
-      }
-      return session;
-    },
-  },
-  secret: env.NEXTAUTH_SECRET,
-};
+import { auth } from "@/auth";
 
 /**
- * Get server session
+ * Auth.js v5 helper functions
+ * For route handlers and server components
+ */
+
+/**
+ * Get server session (Auth.js v5)
  */
 export async function getServerSession() {
-  const { getServerSession: nextGetServerSession } = await import("next-auth");
-  return nextGetServerSession(authOptions);
+  return auth();
 }
 
 /**
  * Protect API route - throw error if not authenticated
  */
 export async function requireAuth() {
-  const session = await getServerSession();
+  const session = await auth();
   if (!session?.user) {
     throw new Error("Unauthorized");
   }
@@ -95,7 +28,7 @@ export async function requireAuth() {
  */
 export async function requireAdmin() {
   const session = await requireAuth();
-  if (session.user.role !== "ADMIN") {
+  if ((session.user as any).role !== "ADMIN") {
     throw new Error("Forbidden - Admin access required");
   }
   return session;
@@ -105,6 +38,6 @@ export async function requireAdmin() {
  * Check if user is authenticated (returns null if not)
  */
 export async function getCurrentUser() {
-  const session = await getServerSession();
+  const session = await auth();
   return session?.user || null;
 }

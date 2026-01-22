@@ -1,120 +1,140 @@
 "use client";
 
 import { useState } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { GenerationForm } from "@/components/generation/generation-form";
-import { GenerationResult } from "@/components/generation/generation-result";
+import { GenerationForm, GenerationData } from "@/components/generation/generation-form";
+import { StreamingOutput } from "@/components/generation/streaming-output";
+import { ExportDialog } from "@/components/generation/export-dialog";
+import { VerificationDialog } from "@/components/verification/verification-dialog";
 import { useGeneration } from "@/hooks/use-generation";
-import { Generation } from "@/types/generation";
+import { useVerification } from "@/hooks/use-verification";
+import { useToast } from "@/hooks/use-toast";
+import { Document, Packer, Paragraph, TextRun } from "docx";
+import { jsPDF } from "jspdf";
+import { saveAs } from "file-saver";
 
 export default function GeneratePage() {
-  const [activeTab, setActiveTab] = useState<"prompt" | "document">("prompt");
-  const [currentGeneration, setCurrentGeneration] = useState<Generation | null>(null);
-  const { isGenerating } = useGeneration();
+  const { isGenerating, streamingContent, result, generate, humanize } = useGeneration();
+  const { verify, result: verificationResult } = useVerification();
+  const { toast } = useToast();
+  const [showExportDialog, setShowExportDialog] = useState(false);
+  const [showVerificationDialog, setShowVerificationDialog] = useState(false);
 
-  const handleGenerationComplete = (generation: Generation) => {
-    setCurrentGeneration(generation);
+  const handleGenerate = async (data: GenerationData) => {
+    try {
+      await generate(data);
+    } catch (error) {
+      // Error handled by hook
+    }
+  };
+
+  const handleRehumanize = async () => {
+    if (!streamingContent) return;
+    try {
+      await humanize(streamingContent);
+    } catch (error) {
+      // Error handled by hook
+    }
+  };
+
+  const handleVerify = async () => {
+    if (!streamingContent) return;
+    try {
+      await verify(streamingContent);
+      setShowVerificationDialog(true);
+    } catch (error) {
+      // Error handled by hook
+    }
+  };
+
+  const handleExport = async (format: string) => {
+    if (!streamingContent) return;
+
+    try {
+      if (format === "txt") {
+        const blob = new Blob([streamingContent], { type: "text/plain;charset=utf-8" });
+        saveAs(blob, "humanwriter-generation.txt");
+      } else if (format === "docx") {
+        const doc = new Document({
+          sections: [
+            {
+              properties: {},
+              children: [
+                new Paragraph({
+                  children: [
+                    new TextRun(streamingContent),
+                  ],
+                }),
+              ],
+            },
+          ],
+        });
+
+        const blob = await Packer.toBlob(doc);
+        saveAs(blob, "humanwriter-generation.docx");
+      } else if (format === "pdf") {
+        const doc = new jsPDF();
+        const lines = doc.splitTextToSize(streamingContent, 180);
+        doc.text(lines, 15, 15);
+        doc.save("humanwriter-generation.pdf");
+      }
+    } catch (error) {
+      toast({
+        title: "Export failed",
+        description: "Failed to export file. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   return (
-    <div className="space-y-8 max-w-7xl mx-auto">
-      {/* Header */}
+    <div className="space-y-6 max-w-7xl mx-auto p-6">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Generate Text</h1>
+        <h1 className="text-3xl font-bold tracking-tight">Generate Academic Text</h1>
         <p className="text-muted-foreground mt-2">
-          Create human-like academic writing from prompts or documents
+          Create 100% undetectable human-like academic writing
         </p>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        {/* Generation Form */}
         <div>
-          <Card>
-            <CardHeader>
-              <CardTitle>Input</CardTitle>
-              <CardDescription>
-                Choose your input method and configure parameters
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)}>
-                <TabsList className="grid w-full grid-cols-2">
-                  <TabsTrigger value="prompt">From Prompt</TabsTrigger>
-                  <TabsTrigger value="document">From Document</TabsTrigger>
-                </TabsList>
-
-                <TabsContent value="prompt" className="mt-6">
-                  <GenerationForm
-                    mode="prompt"
-                    onComplete={handleGenerationComplete}
-                  />
-                </TabsContent>
-
-                <TabsContent value="document" className="mt-6">
-                  <GenerationForm
-                    mode="document"
-                    onComplete={handleGenerationComplete}
-                  />
-                </TabsContent>
-              </Tabs>
-            </CardContent>
-          </Card>
+          <GenerationForm
+            onGenerate={handleGenerate}
+            isGenerating={isGenerating}
+          />
         </div>
 
-        {/* Results */}
         <div>
-          <Card className="h-full">
-            <CardHeader>
-              <CardTitle>Output</CardTitle>
-              <CardDescription>
-                Your humanized text will appear here
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {isGenerating && (
-                <div className="flex flex-col items-center justify-center py-12 space-y-4">
-                  <div className="spinner w-12 h-12" />
-                  <p className="text-sm text-muted-foreground">
-                    Generating your text...
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    This may take a few moments
-                  </p>
-                </div>
-              )}
-
-              {!isGenerating && !currentGeneration && (
-                <div className="flex flex-col items-center justify-center py-12 text-center">
-                  <div className="rounded-full bg-muted p-6 mb-4">
-                    <svg
-                      className="h-12 w-12 text-muted-foreground"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                      />
-                    </svg>
-                  </div>
-                  <h3 className="font-medium mb-2">No generation yet</h3>
-                  <p className="text-sm text-muted-foreground max-w-sm">
-                    Fill in the form and click generate to create your humanized text
-                  </p>
-                </div>
-              )}
-
-              {!isGenerating && currentGeneration && (
-                <GenerationResult generation={currentGeneration} />
-              )}
-            </CardContent>
-          </Card>
+          <StreamingOutput
+            content={streamingContent}
+            isStreaming={isGenerating}
+            metrics={
+              result
+                ? {
+                    wordCount: result.wordCount,
+                    burstiness: result.burstiness,
+                    humanizationScore: result.humanizationScore,
+                  }
+                : undefined
+            }
+            onRehumanize={handleRehumanize}
+            onVerify={handleVerify}
+            onExport={() => setShowExportDialog(true)}
+          />
         </div>
       </div>
+
+      <ExportDialog
+        open={showExportDialog}
+        onOpenChange={setShowExportDialog}
+        content={streamingContent}
+        onExport={handleExport}
+      />
+
+      <VerificationDialog
+        open={showVerificationDialog}
+        onOpenChange={setShowVerificationDialog}
+        result={verificationResult}
+      />
     </div>
   );
 }
