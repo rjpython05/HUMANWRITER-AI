@@ -1,45 +1,46 @@
 # Core Framework
-fastapi==0.108.0
-uvicorn[standard]==0.25.0
-pydantic==2.5.3
-pydantic-settings==2.1.0
+fastapi==0.128.0
+uvicorn[standard]==0.40.0
+pydantic==2.13.0
+pydantic-settings==2.8.1
 
 # Database
-sqlalchemy==2.0.25
-psycopg2-binary==2.9.9
+sqlalchemy==2.0.40
+psycopg2-binary==2.9.10
 
 # Redis
-redis==5.0.1
+redis==5.2.3
 
 # Vector DB & Embeddings
-chromadb==0.4.22
-sentence-transformers==2.2.2
+chromadb==1.4.1
+sentence-transformers==5.2.0
 
 # LangChain & LLM
-langchain==0.1.0
-langchain-community==0.0.10
-ollama==0.1.6
+langchain==1.2.6
+langchain-community==1.2.6
+langchain-core==1.2.7
+ollama==0.4.8
 
 # NLP & Text Processing
-nltk==3.8.1
-spacy==3.7.2
-textstat==0.7.3
-numpy==1.26.3
+nltk==3.9.1
+spacy==3.8.4
+textstat==0.7.4
+numpy==2.2.4
 
 # Utilities
-python-dotenv==1.0.0
-python-multipart==0.0.6
-aiofiles==23.2.1
-pydantic-core==2.14.6
+python-dotenv==1.0.1
+python-multipart==0.0.20
+aiofiles==24.1.0
+pydantic-core==2.29.0
 
 # Logging & Monitoring
-loguru==0.7.2
+loguru==0.7.3
 
 # Testing
-pytest==7.4.4
-pytest-asyncio==0.23.3
-httpx==0.26.0
+pytest==8.3.5
+pytest-asyncio==0.25.4
+httpx==0.29.1
 
 # Type checking
-mypy==1.8.0
-types-redis==4.6.0.20240106
+mypy==1.14.1
+types-redis==4.6.0.20250108
