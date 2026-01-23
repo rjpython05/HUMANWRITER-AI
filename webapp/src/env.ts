@@ -3,14 +3,14 @@ import { z } from "zod";
 /**
  * Environment variables schema
  * CRITICAL: Only NEXT_PUBLIC_* variables are exposed to the client
- * Server-only variables (DATABASE_URL, NEXTAUTH_SECRET, etc.) are NOT included here
+ * Server-only variables (DATABASE_URL, AUTH_SECRET, etc.) are NOT included here
  */
 
 // Server-side environment variables (NEVER exposed to client)
 const serverSchema = z.object({
   NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
   NEXTAUTH_URL: z.string().url().optional(),
-  NEXTAUTH_SECRET: z.string().min(1),
+  AUTH_SECRET: z.string().min(1),
   DATABASE_URL: z.string().min(1),
   // Optional: OAuth providers (if implementing social login)
   GOOGLE_CLIENT_ID: z.string().optional(),
@@ -36,7 +36,7 @@ const parseEnv = () => {
       return envSchema.parse({
         NODE_ENV: process.env.NODE_ENV,
         NEXTAUTH_URL: process.env.NEXTAUTH_URL,
-        NEXTAUTH_SECRET: process.env.NEXTAUTH_SECRET,
+        AUTH_SECRET: process.env.AUTH_SECRET,
         DATABASE_URL: process.env.DATABASE_URL,
         GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID,
         GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET,

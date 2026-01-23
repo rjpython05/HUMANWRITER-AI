@@ -1,5 +1,5 @@
 import NextAuth from "next-auth";
-import { authConfig } from "@/app/api/auth/[...nextauth]/route";
+import { authConfig } from "@/lib/auth-config";
 
 /**
  * Auth.js v5 export

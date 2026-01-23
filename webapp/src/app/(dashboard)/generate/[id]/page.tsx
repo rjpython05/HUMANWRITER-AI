@@ -39,9 +39,10 @@ async function getGeneration(id: string): Promise<Generation | null> {
 export default async function GenerationDetailPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
-  const generation = await getGeneration(params.id);
+  const { id } = await params;
+  const generation = await getGeneration(id);
 
   if (!generation) {
     notFound();
