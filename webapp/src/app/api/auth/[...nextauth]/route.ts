@@ -78,8 +78,6 @@ export const authConfig: NextAuthConfig = {
   },
 };
 
-const handler = NextAuth(authConfig);
+const { handlers } = NextAuth(authConfig);
 
-// Wrapper for Next.js 16 compatibility with async params
-export const GET = handler;
-export const POST = handler;
+export const { GET, POST } = handlers;
